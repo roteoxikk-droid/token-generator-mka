@@ -22,11 +22,15 @@
 
     <!-- EKRAN LOGOWANIA -->
     <div id="loginCard" class="card">
-        <h2>Dostęp zastrzeżony</h2>
-        <p style="font-size: 14px; color: #666;">Podaj hasło, aby uzyskać dostęp do generatora.</p>
+        <h2>Logowanie</h2>
         <form id="loginForm">
-            <input type="password" id="passInput" placeholder="Wpisz hasło..." autocapitalize="none" autocorrect="off" spellcheck="false" required>
-            <button type="submit">Zaloguj się</button>
+            <label>Email:</label>
+            <input type="email" id="emailInput" placeholder="twoj@email.com" required autocapitalize="none" autocorrect="off">
+            
+            <label>Hasło:</label>
+            <input type="password" id="passInput" placeholder="Twoje hasło" required autocapitalize="none" autocorrect="off">
+            
+            <button type="submit" id="loginBtn">Zaloguj się</button>
         </form>
     </div>
 
@@ -52,44 +56,54 @@
     </div>
 
     <script>
-        // PODMIEŃ SWOJE DANE TUTAJ:
-        const MOJE_HASLO = '123456';
+        // TUTAJ PODMIEŃ SWOJE DANE Z SUPABASE:
         const SUPABASE_URL = 'https://rpmxzjdqcncwmjbegvld.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJwbXh6amRxY25jd21qYmVndmxkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc4NTAxNTIsImV4cCI6MjEwMzQyNjE1Mn0.5Vl--_6IGK546mZPvzVujkWjscYzQmfzjnXeROBx3pE';
 
-        let supabaseClient = null;
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        document.getElementById('loginForm').addEventListener('submit', (e) => {
+        // Automatyczne sprawdzanie aktywnej sesji
+        async function checkSession() {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (session) {
+                showApp();
+            }
+        }
+        checkSession();
+
+        // Logowanie za pomocą danych z Supabase Auth
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const enteredPass = document.getElementById('passInput').value.trim();
-            
-            if (enteredPass === MOJE_HASLO.trim()) {
-                localStorage.setItem('is_auth', 'true');
-                initAndShowApp();
+            const btn = document.getElementById('loginBtn');
+            btn.disabled = true;
+            btn.innerText = 'Logowanie...';
+
+            const email = document.getElementById('emailInput').value.trim();
+            const password = document.getElementById('passInput').value.trim();
+
+            const { data, error } = await supabaseClient.auth.signInWithPassword({
+                email: email,
+                password: password,
+            });
+
+            btn.disabled = false;
+            btn.innerText = 'Zaloguj się';
+
+            if (error) {
+                alert('Błąd logowania: ' + error.message);
             } else {
-                alert('Nieprawidłowe hasło!');
+                showApp();
             }
         });
 
-        function initAndShowApp() {
-            try {
-                if (!supabaseClient) {
-                    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                }
-                document.getElementById('loginCard').style.display = 'none';
-                document.getElementById('appContent').style.display = 'block';
-                fetchTokens();
-            } catch (err) {
-                alert('Błąd konfiguracji Supabase: ' + err.message);
-            }
+        function showApp() {
+            document.getElementById('loginCard').style.display = 'none';
+            document.getElementById('appContent').style.display = 'block';
+            fetchTokens();
         }
 
-        if (localStorage.getItem('is_auth') === 'true') {
-            initAndShowApp();
-        }
-
-        function logout() {
-            localStorage.removeItem('is_auth');
+        async function logout() {
+            await supabaseClient.auth.signOut();
             location.reload();
         }
 
