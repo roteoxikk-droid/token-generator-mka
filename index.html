@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Generator Tokenów</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: -apple-system, sans-serif; padding: 20px; max-width: 450px; margin: 0 auto; background: #f8f9fa; color: #333; }
+        h2, h3 { margin-bottom: 10px; }
+        .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 15px; }
+        label { display: block; font-size: 14px; margin-bottom: 5px; font-weight: 600; }
+        input { width: 100%; padding: 10px; font-size: 16px; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; margin-bottom: 12px; }
+        button { width: 100%; padding: 12px; background: #007AFF; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
+        button.copy { background: #34C759; margin-top: 8px; }
+        button.logout { background: #FF3B30; margin-top: 20px; font-size: 12px; padding: 8px; }
+        .token-item { font-size: 14px; margin-bottom: 6px; }
+        #appContent { display: none; }
+    </style>
+</head>
+<body>
+
+    <!-- EKRAN LOGOWANIA -->
+    <div id="loginCard" class="card">
+        <h2>Dostęp zastrzeżony</h2>
+        <p style="font-size: 14px; color: #666;">Podaj hasło, aby uzyskać dostęp do generatora.</p>
+        <form id="loginForm">
+            <input type="password" id="passInput" placeholder="Wpisz hasło..." required>
+            <button type="submit">Zaloguj się</button>
+        </form>
+    </div>
+
+    <!-- GŁÓWNA APLIKACJA -->
+    <div id="appContent">
+        <div class="card">
+            <h2>Nowy Token</h2>
+            <form id="tokenForm">
+                <label>Pozostałe użycia (uses_left):</label>
+                <input type="number" id="usesLeft" value="1" required>
+
+                <label>Wygasa (expires_at):</label>
+                <input type="datetime-local" id="expiresAt" required>
+
+                <button type="submit" id="submitBtn">Generuj i Zapisz</button>
+            </form>
+        </div>
+
+        <h3>Ostatnie Tokeny</h3>
+        <div id="tokenList">Ładowanie...</div>
+
+        <button class="logout" onclick="logout()">Wyloguj się</button>
+    </div>
+
+    <script>
+        // KONFIGURACJA DANYCH
+        const MOJE_HASLO = '060926'; // <-- Wpisz tu swoje tajne hasło
+        const SUPABASE_URL = 'https://rpmxzjdqcncwmjbegvld.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJwbXh6amRxY25jd21qYmVndmxkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc4NTAxNTIsImV4cCI6MjEwMzQyNjE1Mn0.5Vl--_6IGK546mZPvzVujkWjscYzQmfzjnXeROBx3pE';
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Sprawdzanie czy użytkownik jest już zalogowany
+        if (localStorage.getItem('is_auth') === 'true') {
+            showApp();
+        }
+
+        document.getElementById('loginForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const pass = document.getElementById('passInput').value;
+            if (pass === MOJE_HASLO) {
+                localStorage.setItem('is_auth', 'true');
+                showApp();
+            } else {
+                alert('Nieprawidłowe hasło!');
+            }
+        });
+
+        function showApp() {
+            document.getElementById('loginCard').style.display = 'none';
+            document.getElementById('appContent').style.display = 'block';
+            fetchTokens();
+        }
+
+        function logout() {
+            localStorage.removeItem('is_auth');
+            location.reload();
+        }
+
+        function generateRandomToken() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            const segment = () => Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+            return `${segment()}-${segment()}-${segment()}-${segment()}`;
+        }
+
+        async function fetchTokens() {
+            const { data, error } = await supabase.from('tokens').select('*').order('id', { ascending: false }).limit(10);
+            const listDiv = document.getElementById('tokenList');
+            
+            if (error) {
+                listDiv.innerHTML = 'Błąd pobierania danych.';
+                return;
+            }
+
+            if (data.length === 0) {
+                listDiv.innerHTML = '<p>Brak tokenów w bazie.</p>';
+                return;
+            }
+
+            listDiv.innerHTML = data.map(t => `
+                <div class="card">
+                    <div class="token-item"><strong>Link:</strong> https://roteoxikk-droid.github.io</div>
+                    <div class="token-item"><strong>Token:</strong> ${t.token}</div>
+                    <div class="token-item" style="color: #666; font-size: 12px;">Użycia: ${t.uses_left} | Wygasa: ${new Date(t.expires_at).toLocaleString()}</div>
+                    <button class="copy" onclick="copyToken('${t.token}')">Skopiuj gotowy tekst</button>
+                </div>
+            `).join('');
+        }
+
+        document.getElementById('tokenForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.innerText = 'Zapisywanie...';
+
+            const newToken = generateRandomToken();
+            const uses = parseInt(document.getElementById('usesLeft').value, 10);
+            const expires = new Date(document.getElementById('expiresAt').value).toISOString();
+
+            const { error } = await supabase.from('tokens').insert([
+                { token: newToken, uses_left: uses, expires_at: expires }
+            ]);
+
+            btn.disabled = false;
+            btn.innerText = 'Generuj i Zapisz';
+
+            if (error) {
+                alert('Błąd zapisu: ' + error.message);
+            } else {
+                document.getElementById('usesLeft').value = '1';
+                document.getElementById('expiresAt').value = '';
+                fetchTokens();
+            }
+        });
+
+        function copyToken(token) {
+            const text = `Link: https://roteoxikk-droid.github.io\nToken: ${token}`;
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Skopiowano do schowka!');
+            });
+        }
+    </script>
+</body>
+</html>
