@@ -52,14 +52,12 @@
     </div>
 
     <script>
-        // ==========================================
-        // TUTAJ PODMIEŃ SWOJE DANE:
-        const MOJE_HASLO = 'TUTAJ_TWOJE_HASLO';
-        const SUPABASE_URL = 'https://TUTAJ_TWOJ_PROJEKT.supabase.co';
-        const SUPABASE_ANON_KEY = 'TUTAJ_TWOJ_KLUCZ_ANON';
-        // ==========================================
+        // PODMIEŃ SWOJE DANE TUTAJ:
+        const MOJE_HASLO = '123456';
+        const SUPABASE_URL = 'https://rpmxzjdqcncwmjbegvld.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJwbXh6amRxY25jd21qYmVndmxkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc4NTAxNTIsImV4cCI6MjEwMzQyNjE1Mn0.5Vl--_6IGK546mZPvzVujkWjscYzQmfzjnXeROBx3pE';
 
-        let supabase = null;
+        let supabaseClient = null;
 
         document.getElementById('loginForm').addEventListener('submit', (e) => {
             e.preventDefault();
@@ -75,14 +73,14 @@
 
         function initAndShowApp() {
             try {
-                if (!supabase) {
-                    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                if (!supabaseClient) {
+                    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 }
                 document.getElementById('loginCard').style.display = 'none';
                 document.getElementById('appContent').style.display = 'block';
                 fetchTokens();
             } catch (err) {
-                alert('Błąd połączenia z Supabase! Sprawdź URL i klucz ANON w kodzie.\n' + err.message);
+                alert('Błąd konfiguracji Supabase: ' + err.message);
             }
         }
 
@@ -103,7 +101,7 @@
 
         async function fetchTokens() {
             const listDiv = document.getElementById('tokenList');
-            const { data, error } = await supabase.from('tokens').select('*').order('id', { ascending: false }).limit(10);
+            const { data, error } = await supabaseClient.from('tokens').select('*').order('id', { ascending: false }).limit(10);
             
             if (error) {
                 listDiv.innerHTML = '<p style="color:red;">Błąd pobierania danych: ' + error.message + '</p>';
@@ -135,7 +133,7 @@
             const uses = parseInt(document.getElementById('usesLeft').value, 10);
             const expires = new Date(document.getElementById('expiresAt').value).toISOString();
 
-            const { error } = await supabase.from('tokens').insert([
+            const { error } = await supabaseClient.from('tokens').insert([
                 { token: newToken, uses_left: uses, expires_at: expires }
             ]);
 
