@@ -280,9 +280,9 @@
         }
 
         function generateRandomToken() {
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-            const segment = () => Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-            return `${segment()}-${segment()}-${segment()}-${segment()}`;
+            const array = new Uint8Array(16);
+            crypto.getRandomValues(array);
+            return Array.from(array, b => b.toString(16).padStart(2, '0')).join('').match(/.{1,4}/g).join('-');
         }
 
         async function fetchTokens() {
